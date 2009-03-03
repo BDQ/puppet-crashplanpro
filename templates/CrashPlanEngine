@@ -1,0 +1,52 @@
+#!/bin/sh
+
+SCRIPT=$(ls -l $0 | awk '{ print $NF }')
+SCRIPTDIR=$(dirname $SCRIPT)
+TARGETDIR="$SCRIPTDIR/.."
+
+. ${TARGETDIR}/install.vars
+. ${TARGETDIR}/bin/run.conf
+
+cd ${TARGETDIR}
+
+CP=
+for f in `ls ./lib/*.jar`; do
+CP=${CP}:$f
+done
+
+case $1 in
+        start)
+                PID=`/bin/ps -eo 'pid,cmd'| grep 'app=CrashPlanService' | grep -v grep | awk '{sub("^ ", "", $0); print $0}' | cut -d " " -f 1`
+                if [ -n "$PID" ]; then
+                  echo CrashPlan is already running with pid $PID
+                  exit 1;
+                fi
+                echo -n "Starting CrashPlan Engine ... "
+                nice -n 19 ${JAVACOMMON} ${SRV_JAVA_OPTS} -classpath "${CP}:./lang" com.backup42.service.CrashPlanService > ${TARGETDIR}/log/engine_output.log 2> ${TARGETDIR}/log/engine_error.log & 
+                if [ $! -gt 0 ]; then
+                        echo $! > ${TARGETDIR}/CrashPlanEngine.pid
+                        echo "OK"
+                else
+                        echo "FAIL" 
+                        exit 1
+                fi
+                ;;
+        stop)
+                echo -n "Stopping CrashPlan Engine ... "
+                if [ -f ${TARGETDIR}/CrashPlanEngine.pid ] ; then
+                  kill `cat ${TARGETDIR}/CrashPlanEngine.pid`
+                  sleep 5
+                fi
+                PID=`/bin/ps -eo 'pid,cmd'| grep 'app=CrashPlanService' | grep -v grep | awk '{sub("^ ", "", $0); print $0}' | cut -d " " -f 1`
+                if [ -n "$PID" ]; then
+                  echo Still running, killing PID=$PID
+                  kill -9 $PID
+                fi
+                rm -f ${TARGETDIR}/CrashPlanEngine.pid
+                echo "OK"
+                ;;
+        *) 
+                echo "$0 <start|stop>"
+                exit 1
+                ;;
+esac

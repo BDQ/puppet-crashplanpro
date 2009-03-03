@@ -1,0 +1,21 @@
+##! /bin/sh
+# Custom Crash Plan client init script, with chkconfig support
+###
+# chkconfig: 235 99 55
+# description: Manages the Crash Plan client service
+###
+
+
+case "$1" in
+start)
+        <%= target_dir %>/bin/CrashPlanEngine start
+        ;;
+stop)
+        <%= target_dir %>/bin/CrashPlanEngine stop
+        ;;
+restart)
+        stop
+        start
+        ;;
+esac
+exit 0
